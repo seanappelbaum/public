@@ -1,0 +1,84 @@
+"""Decorate print() such that (A) it refuses to
+print anything under ten characters long and (B) only five calls are allowed,
+ and demonstrate these restrictions when the program is run"""
+import functools
+from functools import wraps
+def count_calls(func):
+    @functools.wraps(func)
+    def wrapper_count_calls(*args, **kwargs):
+        wrapper_count_calls.num_calls += 1
+        #print(f"Call {wrapper_count_calls.num_calls} of {func.__name__!r}")
+        if wrapper_count_calls.num_calls < 6:
+            return func(*args, **kwargs)
+        else:  # print(f"Call {wrapper_count_calls.num_calls} of {func.__name__!r}")
+            print("Error Call Count is more than 5")
+            return
+    wrapper_count_calls.num_calls = 0
+    return wrapper_count_calls
+
+
+def len_of_args(func):
+    @wraps(func)
+    def wrapper_length_calls(*args, **kwargs):
+        #print("Func Name: {}".format(func.__name__))
+      #  print('How many Args  :{}'.format(args.__len__()))
+        for val in args:
+            if len(val) > 9:
+                #print("len of val:{}".format(len(val)))
+                return func(*args, **kwargs)
+            else:
+                print("Error NA Count/len_args func  not more than 10")
+                return
+    return wrapper_length_calls
+
+@len_of_args
+@count_calls
+def print_value(*args, **kwargs):
+    for value in args:    #print("Whee! "   )
+        print("PrintValue func  value == {}  len: {} \n".format(value ,len(value) ))
+
+
+"""bar = len_of_args(print_value )
+bar1 = count_calls(print_value)
+#bar("hello","bye")
+foo = count_calls(bar)
+#foo("abcdefghijkl","johndjfsfk", "sfas","sjfhsjfsjfha", "1234567890" ,"djfkjladfkjasfjkajks")
+#bar("abcdefghijkl","johndjfsfk", "sfas","sjfhsjfsjfha", "1234567890" ,"djfkjladfkjasfjkajks")
+bar1("abcdefghijkl","johndjfsfk", "sfas","sjfhsjfsjfha", "1234567890" ,"djfkjladfkjasfjkajks")"""
+
+print_value("99  sfasdfasdfsa")
+print_value("2 johnasdf")
+print_value("3 abcdfffss")
+print_value("4 johnjohn")
+print_value("5 johnjonh")
+print_value("6 johnfdss")
+print_value("7 abc")
+
+************************
+
+import functools
+
+def count_calls(func):
+    @functools.wraps(func)
+    def wrapper_count_calls(*args, **kwargs):
+        wrapper_count_calls.num_calls += 1
+        print(f"Call {wrapper_count_calls.num_calls} of {func.__name__!r}")
+        if wrapper_count_calls.num_calls < 6:
+
+            return func(*args, **kwargs)
+        else:   #print(f"Call {wrapper_count_calls.num_calls} of {func.__name__!r}")
+            return
+
+    wrapper_count_calls.num_calls = 0
+    return wrapper_count_calls
+
+@count_calls
+def say_ss(*str_value):
+    print(" This is the print : {}".format(str_value))
+
+say_ss("sfa")
+say_ss()
+say_ss()
+say_ss("sfa")
+say_ss("dfgsdf")
+say_ss("dfgdgd")
