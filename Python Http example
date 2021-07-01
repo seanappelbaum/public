@@ -1,1 +1,46 @@
+***************Request HTTP ***************************
+import pkg_resources
+import requests
+
+payload = {}
+r = requests.get('https://httpbin.org/get')
+print(r.headers)
+
+import http.server.BaseHTTPServer as httpd
+BaseHTTPServer.HTTPServer(('', 8000), BaseHTTPServer.BaseHTTPRequestHandler)
+mylist = range(10)
+while mylist:
+    httpd.handle_request()
+    mylist.pop() # remove last item of `mylist`
+   *****************************TestHttpServer ************************* 
+    import http.server
+from http.server import HTTPServer, BaseHTTPRequestHandler
+count2 = 0
+count = 0
+
+
+class Handler(http.server.BaseHTTPRequestHandler): # BaseHTTPRequestHandler
+
+    def do_GET(self):
+        print("my path  " + str(self.path) )
+        self.send_response( 200 )
+        self.send_header( 'Content-Type', 'text/plain' )
+        self.end_headers()
+        self.wfile.write( 'Standard welcome  !\n'.encode() )
+        print("End of write to server")
+
+
+if __name__ == '__main__':
+    server = ( '127.0.0.1', 9000 )
+    httpd = http.server.HTTPServer( server, Handler )
+    print("starting server waiting")
+    while count2 < 1:
+        count2 += 1
+        print("before serve forever httpd.handlerequest")
+        httpd.handle_request()
+        #httpd.serve_forever()
+        print("after serve forever while loop done" + "  count:" + str(count2) )
+
+print("done ")
+
 
