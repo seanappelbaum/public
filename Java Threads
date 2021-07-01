@@ -1,0 +1,313 @@
+package mod12;
+
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import java.util.concurrent.locks.*;
+
+public class CookThread implements Runnable{
+	Food currentOrder;
+	
+	Lock addOrderLock;
+	
+	boolean m_bShouldShutdown;
+	ServeThread m_server;
+	List<Food> m_entireOrder;
+	int m_nextFoodOrder;
+	
+	public CookThread(List<Food> initialOrder) {
+		addOrderLock = new ReentrantLock();
+		m_entireOrder = initialOrder;
+		m_nextFoodOrder = 0;
+		//itemtocook.iterator();
+	}
+	
+	public void setServer(ServeThread st)
+	{
+		m_server = st;
+	}
+	
+	public void getname() {
+		currentOrder.getName();
+	}
+
+	public void submitCurrentOrder() throws InterruptedException
+	{
+		addOrderLock.lock();
+		
+		m_server.submitCompletedOrder(currentOrder);
+		
+		currentOrder = null;
+		System.out.println("Order complete waiting for server..");
+		addOrderLock.unlock();
+	}
+	
+	public void shutdown()
+	{
+		addOrderLock.lock();
+		
+		m_bShouldShutdown = true;
+		
+		addOrderLock.unlock();
+	}
+		
+	public void addOrder(Food order)
+	{
+		if (currentOrder == null)
+		{
+			addOrderLock.lock();
+			
+			currentOrder = order;
+			TimerTask task = new TimerTask() {
+		        public void run() 
+		        {
+		            try {
+						submitCurrentOrder();
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+		        }
+		    };
+		    Timer timer = new Timer("Timer");
+		     
+		    long delay = order.getCookTime() * 1000;
+		    timer.schedule(task, delay);
+		    System.out.println("Add order");
+		    addOrderLock.unlock();
+		}
+	}
+	
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		//start or maybe wait
+		//done
+		while ((m_bShouldShutdown == false) && (m_nextFoodOrder < m_entireOrder.size()))
+		{
+			try {
+				if (currentOrder == null)
+				{
+					addOrder(m_entireOrder.get(m_nextFoodOrder));
+					m_nextFoodOrder += 1;
+					//System.out.println("get order and cook");
+				}
+				else
+				{
+					Thread.sleep(10);
+				}
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		};
+		
+	}
+	
+
+}
+package mod12;
+
+public class Food {
+	
+	private String name;
+	private int cookTime, serveTime; // number of seconds
+	
+	public Food(String name, int cookTime, int serveTime) {
+		this.name = name;
+		this.cookTime = cookTime;
+		this.serveTime = serveTime;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public int getCookTime() {
+		return cookTime;
+	}
+	public void setCookTime(int cookTime) {
+		if(cookTime > 0) 
+			this.cookTime = cookTime;
+	}
+	public int getServeTime() {
+		return serveTime;
+	}
+	public void setServeTime(int serveTime) {
+		if(serveTime > 0) 
+			this.serveTime = serveTime;
+	}
+	
+	public String toString() {
+		return name + " (" + cookTime + " TO COOK, " + serveTime + " TO SERVE)";
+	}
+	
+	
+	
+
+}
+
+package mod12;
+
+import java.util.*;
+import java.util.concurrent.*;
+
+public class FoodTester {
+
+	public static void main(String[] args) {
+		List<Food> foodList = new ArrayList<>();
+		foodList.add(new Food("Spinach Dip", 2, 1));
+		foodList.add(new Food("Burger", 5, 1));
+		foodList.add(new Food("Pasta", 4, 3));
+		foodList.add(new Food("Baked Alaska", 6, 20));
+		foodList.add(new Food("Salad", 1, 1));
+		foodList.add(new Food("Bruchetta", 3, 1));
+		foodList.add(new Food("Bread", 1, 1));
+		foodList.add(new Food("Fried Green Tomatoes", 2, 1));
+		
+		// INITIALIZE AND START YOUR THREADS HERE!
+		
+		CookThread cooker = new CookThread(foodList);
+		ServeThread server = new ServeThread();
+
+		cooker.setServer(server);
+		
+		Thread cookerThread = new Thread(cooker);
+		Thread serverThread = new Thread(server);
+		cookerThread.start();
+		serverThread.start();
+		
+		int programTimeCounter=0;
+		while(cookerThread.isAlive()) {
+			System.out.println("TIME " + programTimeCounter);
+			programTimeCounter++;
+			try {
+				Thread.sleep(1000);
+			} catch(InterruptedException ex) {
+				
+			}
+		}
+		
+		// USE STREAMS HERE ON THE INITIAL LIST! 
+		// NOTE: THIS PART HAS NOTHING TO DO WITH THE THREADS- JUST MORE STREAM PRACTICE! :)
+		// USE METHOD REFERENCES!
+		int totalCookTime =  foodList.stream().mapToInt(cook->cook.getCookTime()).sum();
+		int totalServeTime = foodList.stream().mapToInt(cook->cook.getServeTime()).sum();
+		System.out.println("Total Cook Time = " + totalCookTime);
+		System.out.println("Total Serve Time = " + totalServeTime);	
+		System.out.println("Program Time = " + programTimeCounter);
+		System.exit(0);
+	}
+
+}
+package mod12;
+
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.locks.*;
+
+public class ServeThread implements Runnable {
+	
+	Food[] readyFood;
+	int		m_stationBeingServed;
+	Lock submitOrderLock;
+	Object orderFinished;
+	
+	boolean m_bShouldShutdown;
+	
+	
+	public ServeThread()
+	{
+		readyFood = new Food[3];
+		readyFood[0] = null;
+		readyFood[1] = null;
+		readyFood[2] = null;
+		submitOrderLock = new ReentrantLock();
+		orderFinished = new Object();
+	}
+	
+	public void shutdown()
+	{
+		submitOrderLock.lock();
+		
+		m_bShouldShutdown = true;
+		
+		submitOrderLock.unlock();
+	}
+	
+	
+	public void onOrderComplete(int stationIndex)
+	{	
+		synchronized(orderFinished)
+		{
+			readyFood[stationIndex] = null;
+			orderFinished.notifyAll();
+		}
+	}
+	
+	public void submitCompletedOrder(Food order) throws InterruptedException
+	{
+		synchronized(orderFinished)
+		{
+			submitOrderLock.lock();
+	
+			boolean bDidSubmitOrder = false;
+			
+			do
+			{
+				for (int i = 0; i < 3; i++)
+				{
+					if (readyFood[i] == null)
+					{
+						readyFood[i] = order;
+						m_stationBeingServed = i;
+						bDidSubmitOrder = true;
+						
+						TimerTask task = new TimerTask() {
+					        public void run() 
+					        {
+					        	onOrderComplete(m_stationBeingServed);
+					        }
+					    };
+					    
+					    Timer timer = new Timer("Timer");
+					     
+					    long delay = order.getServeTime() * 1000;
+					    timer.schedule(task, delay);
+					    System.out.println("server completed order");
+					    break;
+					}
+				}
+				
+				if (bDidSubmitOrder == false)
+				{
+					orderFinished.wait();
+				}
+				
+			} while (bDidSubmitOrder == false);		
+			
+			submitOrderLock.unlock();
+		}
+	}			
+				
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		//start or maybe wait
+		while (m_bShouldShutdown == false)
+		{
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		};
+		//done
+	}
+
+}
+
